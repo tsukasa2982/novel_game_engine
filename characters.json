@@ -1,0 +1,26 @@
+[
+  {
+    "characterId": "ohara",
+    "characterName": "小原 司",
+    "expressionId": "normal",
+    "imageUrl": "https://github.com/user-attachments/assets/914e3df2-aedd-4057-8c1b-0698bed31400"
+  },
+  {
+    "characterId": "ohara",
+    "characterName": "小原 司",
+    "expressionId": "smile",
+    "imageUrl": "https://github.com/user-attachments/assets/688a2765-2567-4477-8867-6903b98a3465"
+  },
+  {
+    "characterId": "jigyounushi",
+    "characterName": "%PLAYER_NAME%",
+    "expressionId": "normal",
+    "imageUrl": "https://github.com/user-attachments/assets/a2df1170-befd-4cea-aaa4-4a03c37d932f"
+  },
+  {
+    "characterId": "jigyounushi",
+    "characterName": "%PLAYER_NAME%",
+    "expressionId": "confused",
+    "imageUrl": "https://github.com/user-attachments/assets/fc6e9f98-3bb0-4ad0-b5ab-aa281b8f2b98"
+  }
+]

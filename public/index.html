@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>俺のネットショップ、税金で詰むわけがない！？</title>
+
+  <script src="/__/firebase/9.6.1/firebase-app-compat.js"></script>
+  <script src="/__/firebase/9.6.1/firebase-firestore-compat.js"></script>
+  <script src="/__/firebase/9.6.1/firebase-functions-compat.js"></script>
+  <script src="/__/firebase/9.6.1/firebase-auth-compat.js"></script>
+  <script src="/__/firebase/init.js"></script>
+
+  <style>
+    /* --- 基本レイアウト --- */
+    body { 
+      font-family: sans-serif; 
+      margin: 0; 
+      background-color: #111; 
+      color: white; 
+      overflow: hidden; 
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    /* ゲーム画面を16:9に固定し、サイズ崩れを防止 */
+    #game-container { 
+      position: relative; 
+      width: 100vw; 
+      height: 56.25vw; /* 16:9の比率 */
+      max-height: 100vh;
+      max-width: 177.78vh;
+      background-color: #000;
+      background-size: cover; 
+      background-position: center; 
+      transition: background-image 0.5s ease-in-out; 
+      overflow: hidden;
+      box-shadow: 0 0 50px rgba(0,0,0,0.8);
+    }
+    
+    /* タイトル画面 */
+    #title-screen { 
+      display: flex; 
+      flex-direction: column; 
+      justify-content: center; 
+      align-items: center; 
+      width: 100%; 
+      height: 100%; 
+      background-color: rgba(0,0,0,0.7); 
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 100;
+    }
+    #title-image { max-width: 70%; max-height: 40%; object-fit: contain; margin-bottom: 20px; }
+    .title-button { padding: 12px 30px; font-size: 1.2em; cursor: pointer; border-radius: 30px; border: 1px solid #fff; background: rgba(255,255,255,0.1); color: white; margin-top: 15px; transition: 0.2s; }
+    .title-button:hover { background: rgba(255,255,255,0.3); }
+
+    /* キャラクター表示エリア */
+    #character-container { position: absolute; bottom: 0; width: 100%; height: 100%; pointer-events: none; }
+    .character { 
+      position: absolute; 
+      bottom: 180px; /* メッセージウィンドウの高さ(180px)のすぐ上に配置 */
+      height: 85%; /* 画面に対するサイズ */
+      max-width: 45%; 
+      transition: all 0.3s ease; 
+      object-fit: contain; 
+      z-index: 50;
+    }
+    .pos-left { left: 5%; }
+    .pos-center { left: 27.5%; }
+    .pos-right { right: 5%; }
+    .inactive { filter: brightness(0.5); transform: scale(0.98); }
+
+    /* --- メッセージウィンドウ (UI改善版) --- */
+    #dialogue-box { 
+      position: absolute; 
+      bottom: 0; 
+      left: 0; 
+      right: 0; 
+      height: 180px; 
+      background: rgba(0, 10, 30, 0.85); 
+      border-top: 3px solid #4a90e2; 
+      padding: 20px 40px; 
+      box-sizing: border-box; 
+      cursor: pointer; 
+      z-index: 60; 
+    }
+    
+    #character-name-box { 
+      font-weight: bold; 
+      font-size: 1.4em; 
+      margin-bottom: 8px; 
+      color: #ffd700; 
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+    }
+    #dialogue-text { 
+      font-size: 1.6em; 
+      line-height: 1.5; 
+      letter-spacing: 0.05em; 
+    }
+
+    /* システムボタン */
+    #ui-buttons { position: absolute; top: 20px; right: 20px; z-index: 110; }
+    #ui-buttons button {
+        background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+        color: white;
+        border: none;
+        padding: 8px 18px;
+        margin-left: 10px;
+        border-radius: 5px;
+        cursor: pointer;
+        font-weight: bold;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    }
+
+    /* オーバーレイ系 */
+    #image-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 120; }
+    #overlay-image { max-width: 85%; max-height: 85%; object-fit: contain; border: 4px solid #fff; }
+    #loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #000; display: flex; justify-content: center; align-items: center; color: white; font-size: 2em; z-index: 200; }
+  </style>
+</head>
+<body>
+  <div id="loading-overlay">読み込み中...</div>
+  
+  <div id="game-container">
+    <div id="title-screen">
+      <img id="title-image" src="https://github.com/user-attachments/assets/b49f1c09-3510-44a7-a543-b8ce068f41bd" alt="Game Title">
+      <button class="title-button" id="start-new-button">はじめから</button>
+      <button class="title-button" id="load-game-button">つづきから</button>
+      
+      <div id="name-input-container" style="display: none; margin-top: 20px;">
+        <input type="text" id="player-name-input" placeholder="あなたの名前を入力" style="padding: 10px; font-size: 1em;">
+        <button class="title-button" id="confirm-name-button">決定</button>
+      </div>
+      
+      <div id="load-input-container" style="display: none; margin-top: 20px;">
+        <input type="text" id="save-code-input" placeholder="セーブコードを入力" style="padding: 10px; font-size: 1em;">
+        <button class="title-button" id="confirm-load-button">ロード</button>
+      </div>
+    </div>
+    
+    <div id="ui-buttons" style="display: none;">
+        <button id="save-button">セーブ</button>
+    </div>
+
+    <div id="character-container"></div>
+    
+    <div id="dialogue-box" style="display: none;">
+      <div id="character-name-box"></div>
+      <div id="dialogue-text"></div>
+    </div>
+
+    <div id="image-overlay">
+      <img id="overlay-image" src="">
+    </div>
+  </div>
+  
+  <script src="app.js"></script>
+  <div id="save-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center;">
+    <div style="background: #1e293b; padding: 30px; border-radius: 15px; border: 2px solid #4a90e2; max-width: 400px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
+        <h3 style="color: #ffd700; margin-top: 0;">💾 セーブ完了！</h3>
+        <p style="color: #e2e8f0; line-height: 1.6; text-align: left;">
+            続きから遊ぶための「セーブコード」が記載された<b>テキストファイルをダウンロードしました。</b>
+        </p>
+        <div style="background: rgba(0,0,0,0.3); padding: 10px; border-radius: 5px; color: #94a3b8; font-size: 0.9em; margin-bottom: 20px; text-align: left;">
+            ※ダウンロードフォルダを確認してください。<br>
+            ※次回プレイ時、タイトル画面の「つづきから」でこのコードを使用します。
+        </div>
+        <button onclick="document.getElementById('save-modal').style.display='none'" 
+                style="background: #3b82f6; color: white; border: none; padding: 10px 30px; border-radius: 5px; cursor: pointer; font-weight: bold;">
+            閉じる
+        </div>
+    </div>
+</div>
+</body>
+</html>
